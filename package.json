@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "@vercel/blob": "^0.22.0",
+    "async": "^3.2.5",
     "dotenv": "^16.4.4"
   }
 }

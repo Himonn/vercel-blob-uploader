@@ -1,25 +1,35 @@
 const fs = require('fs');
 const path = require('path');
 const { put } = require('@vercel/blob');
+const async = require('async');
 require('dotenv').config();
 
-const token = process.env.BLOB_READ_WRITE_TOKEN;
+let uploadQueue;
 
-async function uploadFiles(directory) {
-    const files = fs.readdirSync(directory);
-
-    for (const file of files) {
+async function uploadFile(directory, file, callback) {
+    try {
         const filePath = path.join(directory, file);
-        const fileStream = fs.createReadStream(filePath);
+        const fileBuffer = fs.readFileSync(filePath);
 
-        const { url } = await put(`himon-dev-blob/items/${file}`, fileStream, {
+        const uploadedFile = await put(`items/${file}`, fileBuffer, {
             access: 'public',
             addRandomSuffix: false,
             token: process.env.BLOB_READ_WRITE_TOKEN,
         });
 
-        console.log(`Uploaded ${file} to ${url}`);
+        console.log(`Uploaded ${file} to ${uploadedFile.url}`);
+        callback();
+    } catch (e) {
+        console.error(`Failed to upload ${file}: ${e}`);
+        uploadQueue.push(file);
+        callback();
     }
 }
 
-uploadFiles('./items-icons');
+async function uploadFiles(directory, startIndex = 0) {
+    const files = fs.readdirSync(directory);
+    uploadQueue = async.queue((file, callback) => uploadFile(directory, file, callback), 15);
+    files.slice(startIndex).forEach(file => uploadQueue.push(file));
+}
+
+uploadFiles('./items-icons', 1000);
